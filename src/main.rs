@@ -4,7 +4,7 @@
 use std::{cell::UnsafeCell, sync::atomic::{AtomicBool, Ordering}, thread::spawn};
 
 const LOCKED: bool = true;
-const UNLOCKED: bool = true;
+const UNLOCKED: bool = false;
 
 pub struct Mutex<T> {
     locked: AtomicBool,
@@ -34,7 +34,7 @@ impl<T> Mutex<T> {
         {
             while self.locked.load(Ordering::Relaxed) == LOCKED {}
         }
-        let ret = f(unsafe {&mut *self.v.get() } );
+        let ret = f(unsafe { &mut *self.v.get() });
         self.locked.store(UNLOCKED, Ordering::Release);
         ret
     }
@@ -44,12 +44,12 @@ impl<T> Mutex<T> {
 
 fn main() {
     let l: &'static _ = Box::leak(Box::new(Mutex::new(0)));
-    let handles: Vec<_> = (0..10)
+    let handles: Vec<_> = (0..100)
         .map(|_| {
             spawn(move || {
-                for _ in 0..100 {
+                for _ in 0..10000 {
                     l.with_lock(|v| {
-                        *v += 1;
+                        *v += 1
                     });
                 }
             })
@@ -58,5 +58,5 @@ fn main() {
     for handle in handles {
         handle.join().unwrap();
     }
-    assert_eq!(l.with_lock(|v| *v), 100 * 10)
+    assert_eq!(l.with_lock(|v| *v), 1000000)
 }
